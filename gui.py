@@ -14,9 +14,6 @@ from PyQt6.QtGui import QFont
 from core.GrafoMaker import GrafoMaker
 from core.A_Star import A_Star
 
-# =========================
-# GUI TOTALMENTE REVISADA
-# =========================
 class AStarGUI(QWidget):
     def __init__(self):
         super().__init__()
@@ -28,13 +25,9 @@ class AStarGUI(QWidget):
         self.grafo = None
         self.astar = None
 
-        # LAYOUT PRINCIPAL
         main = QHBoxLayout()
         self.setLayout(main)
 
-        # =========================
-        # PAINEL ESQUERDO (CONTROLES)
-        # =========================
         left = QVBoxLayout()
         left.setContentsMargins(30, 30, 30, 30)
         left.setSpacing(25)
@@ -45,12 +38,11 @@ class AStarGUI(QWidget):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         left.addWidget(title)
 
-        # INPUTS
         row1 = QHBoxLayout()
         left.addLayout(row1)
 
         self.spin_vertices = QSpinBox()
-        self.spin_vertices.setRange(2, 26)
+        self.spin_vertices.setRange(2, 100)
         self.spin_vertices.setValue(10)
         self.style_input(self.spin_vertices)
         row1.addWidget(self.labeled_box("Vértices", self.spin_vertices))
@@ -78,23 +70,16 @@ class AStarGUI(QWidget):
         btn_astar = self.button("Executar A*", self.run_astar)
         left.addWidget(btn_astar)
 
-        # CAMINHO TEXTO
         self.label_caminho = QLabel("")
         self.label_caminho.setFont(QFont("Segoe UI", 14))
         left.addWidget(self.label_caminho)
 
-        # =========================
-        # PAINEL DIREITO (GRAFO)
-        # =========================
         self.fig, self.ax = plt.subplots(figsize=(6, 5))
         self.fig.patch.set_facecolor('#121212')
         self.ax.set_facecolor('#121212')
         self.canvas = FigureCanvas(self.fig)
         main.addWidget(self.canvas, 4)
 
-    # -----------------
-    # UI HELPERS
-    # -----------------
     def labeled_box(self, text, widget):
         frame = QFrame()
         layout = QVBoxLayout()
@@ -117,22 +102,19 @@ class AStarGUI(QWidget):
         btn.clicked.connect(func)
         return btn
 
-    # -----------------
-    # GRAFO
-    # -----------------
     def criar_grafo(self):
         qtd_vertices = self.spin_vertices.value()
         qtd_arestas = self.spin_arestas.value()
 
-        letras = [chr(c) for c in range(ord('A'), ord('A') + qtd_vertices)]
+        ids = [f"V{index}" for index in range(1, qtd_vertices + 1)]
 
         G = GrafoMaker()
 
-        for v in letras:
+        for v in ids:
             G.add_node(v, weight=random.randint(1, 20))
 
         for _ in range(qtd_arestas):
-            u, v = random.sample(letras, 2)
+            u, v = random.sample(ids, 2)
             G.add_edge(u, v)
 
         self.grafo = G
@@ -140,19 +122,20 @@ class AStarGUI(QWidget):
 
         self.combo_origem.clear()
         self.combo_destino.clear()
-        self.combo_origem.addItems(letras)
-        self.combo_destino.addItems(letras)
+        self.combo_origem.addItems(ids)
+        self.combo_destino.addItems(ids)
 
         self.draw_graph()
         self.label_caminho.setText("")
 
-    # -----------------
-    # DESENHO EMBUTIDO DO GRAFO
-    # -----------------
     def draw_graph(self):
+        if not self.grafo:
+            return
+
         self.ax.clear()
-        pos = nx.spring_layout(self.grafo.grafo, seed=42)
-        labels = {n: f"{n}(w={self.grafo.grafo.nodes[n]['weight']})" for n in self.grafo.grafo.nodes}
+        pos = nx.spring_layout(self.grafo.grafo, seed=42, k=4.0)
+
+        labels = {n: f"{n}\nPeso: {self.grafo.grafo.nodes[n]['weight']}" for n in self.grafo.grafo.nodes}
 
         nx.draw(
             self.grafo.grafo, pos, ax=self.ax,
@@ -164,14 +147,10 @@ class AStarGUI(QWidget):
         self.ax.set_title("Grafo", color="white")
         self.canvas.draw()
 
-    # -----------------
-    # ANIMAÇÃO EMBUTIDA
-    # -----------------
     def animate_graph(self, path):
         import numpy as np
-        pos = nx.spring_layout(self.grafo.grafo, seed=42)
+        pos = nx.spring_layout(self.grafo.grafo, seed=42, k=4.0)
 
-        # cores neon estilo shader
         def neon(color_base, intensity):
             return (color_base[0] * intensity, color_base[1] * intensity, color_base[2] * intensity)
 
@@ -180,7 +159,7 @@ class AStarGUI(QWidget):
         gray = (0.5, 0.5, 0.5)
 
         for i, current in enumerate(path):
-            for fade in np.linspace(0.2, 1.0, 10):  # animação suave
+            for fade in np.linspace(0.2, 1.0, 10):
                 self.ax.clear()
                 colors = []
                 for n in self.grafo.grafo.nodes:
@@ -201,9 +180,6 @@ class AStarGUI(QWidget):
                 self.canvas.draw()
                 QApplication.processEvents()
 
-    # -----------------
-    # EXECUTAR A*
-    # -----------------
     def run_astar(self):
         if not self.grafo:
             return
@@ -221,10 +197,6 @@ class AStarGUI(QWidget):
 
         self.animate_graph(path)
 
-
-# =========================
-# MAIN
-# =========================
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     gui = AStarGUI()
