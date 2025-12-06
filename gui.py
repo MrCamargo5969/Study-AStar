@@ -1,105 +1,131 @@
 import sys
 import random
+import networkx as nx
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLabel, QSpinBox, QComboBox, QMessageBox, QFrame
+    QLabel, QSpinBox, QComboBox, QFrame
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
-import networkx as nx
-import matplotlib.pyplot as plt
+
 from core.GrafoMaker import GrafoMaker
 from core.A_Star import A_Star
 
+# =========================
+# GUI TOTALMENTE REVISADA
+# =========================
 class AStarGUI(QWidget):
     def __init__(self):
         super().__init__()
+
         self.setWindowTitle("A* Visualizer - AAA UI")
-        self.setGeometry(200, 100, 800, 500)
-        self.setStyleSheet("background-color: #1e1e1e; color: white;")
+        self.setGeometry(200, 100, 1200, 700)
+        self.setStyleSheet("background-color: #121212; color: white;")
 
         self.grafo = None
         self.astar = None
 
-        main = QVBoxLayout()
-        main.setContentsMargins(30, 30, 30, 30)
-        main.setSpacing(25)
+        # LAYOUT PRINCIPAL
+        main = QHBoxLayout()
+        self.setLayout(main)
+
+        # =========================
+        # PAINEL ESQUERDO (CONTROLES)
+        # =========================
+        left = QVBoxLayout()
+        left.setContentsMargins(30, 30, 30, 30)
+        left.setSpacing(25)
+        main.addLayout(left, 2)
 
         title = QLabel("A* Pathfinding Visualizer")
         title.setFont(QFont("Segoe UI", 26, QFont.Weight.Bold))
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        main.addWidget(title)
+        left.addWidget(title)
 
+        # INPUTS
         row1 = QHBoxLayout()
-        row1.setSpacing(20)
+        left.addLayout(row1)
 
         self.spin_vertices = QSpinBox()
         self.spin_vertices.setRange(2, 26)
         self.spin_vertices.setValue(10)
-        self.stylize_spin(self.spin_vertices)
+        self.style_input(self.spin_vertices)
         row1.addWidget(self.labeled_box("Vértices", self.spin_vertices))
 
         self.spin_arestas = QSpinBox()
         self.spin_arestas.setRange(1, 200)
         self.spin_arestas.setValue(15)
-        self.stylize_spin(self.spin_arestas)
+        self.style_input(self.spin_arestas)
         row1.addWidget(self.labeled_box("Arestas", self.spin_arestas))
 
         btn_criar = self.button("Criar Grafo", self.criar_grafo)
-        row1.addWidget(btn_criar)
-
-        main.addLayout(row1)
+        left.addWidget(btn_criar)
 
         row2 = QHBoxLayout()
-        row2.setSpacing(20)
+        left.addLayout(row2)
 
         self.combo_origem = QComboBox()
-        self.stylize_combo(self.combo_origem)
+        self.style_input(self.combo_origem)
         row2.addWidget(self.labeled_box("Origem", self.combo_origem))
 
         self.combo_destino = QComboBox()
-        self.stylize_combo(self.combo_destino)
+        self.style_input(self.combo_destino)
         row2.addWidget(self.labeled_box("Destino", self.combo_destino))
 
         btn_astar = self.button("Executar A*", self.run_astar)
-        row2.addWidget(btn_astar)
+        left.addWidget(btn_astar)
 
-        main.addLayout(row2)
+        # CAMINHO TEXTO
+        self.label_caminho = QLabel("")
+        self.label_caminho.setFont(QFont("Segoe UI", 14))
+        left.addWidget(self.label_caminho)
 
-        self.setLayout(main)
+        # =========================
+        # PAINEL DIREITO (GRAFO)
+        # =========================
+        self.fig, self.ax = plt.subplots(figsize=(6, 5))
+        self.fig.patch.set_facecolor('#121212')
+        self.ax.set_facecolor('#121212')
+        self.canvas = FigureCanvas(self.fig)
+        main.addWidget(self.canvas, 4)
 
-    def labeled_box(self, label_text, widget):
+    # -----------------
+    # UI HELPERS
+    # -----------------
+    def labeled_box(self, text, widget):
         frame = QFrame()
-        frame.setStyleSheet("background: transparent;")
-        box = QVBoxLayout(frame)
-
-        label = QLabel(label_text)
+        layout = QVBoxLayout()
+        label = QLabel(text)
         label.setFont(QFont("Segoe UI", 13))
-
-        box.addWidget(label)
-        box.addWidget(widget)
-
-        frame.setLayout(box)
+        layout.addWidget(label)
+        layout.addWidget(widget)
+        frame.setLayout(layout)
         return frame
+
+    def style_input(self, widget):
+        widget.setStyleSheet("background-color: #1e1e1e; padding: 6px; border-radius: 6px;")
 
     def button(self, text, func):
         btn = QPushButton(text)
         btn.setFont(QFont("Segoe UI", 12))
-        btn.setStyleSheet("background-color: #3a3a3a; padding: 10px; border-radius: 8px;")
+        btn.setStyleSheet(
+            "background-color: #333333; padding: 10px; border-radius: 8px;"
+        )
         btn.clicked.connect(func)
         return btn
 
-    def stylize_spin(self, spin):
-        spin.setStyleSheet("background-color: #2b2b2b; padding: 5px; color: white; border-radius: 6px;")
-
-    def stylize_combo(self, combo):
-        combo.setStyleSheet("background-color: #2b2b2b; padding: 5px; color: white; border-radius: 6px;")
-
+    # -----------------
+    # GRAFO
+    # -----------------
     def criar_grafo(self):
         qtd_vertices = self.spin_vertices.value()
         qtd_arestas = self.spin_arestas.value()
 
         letras = [chr(c) for c in range(ord('A'), ord('A') + qtd_vertices)]
+
         G = GrafoMaker()
 
         for v in letras:
@@ -114,17 +140,72 @@ class AStarGUI(QWidget):
 
         self.combo_origem.clear()
         self.combo_destino.clear()
-
         self.combo_origem.addItems(letras)
         self.combo_destino.addItems(letras)
 
-        G.draw()
+        self.draw_graph()
+        self.label_caminho.setText("")
 
-        
+    # -----------------
+    # DESENHO EMBUTIDO DO GRAFO
+    # -----------------
+    def draw_graph(self):
+        self.ax.clear()
+        pos = nx.spring_layout(self.grafo.grafo, seed=42)
+        labels = {n: f"{n}(w={self.grafo.grafo.nodes[n]['weight']})" for n in self.grafo.grafo.nodes}
 
+        nx.draw(
+            self.grafo.grafo, pos, ax=self.ax,
+            with_labels=True, labels=labels,
+            node_color="#888888", edge_color="#555555",
+            node_size=700, font_size=8
+        )
+
+        self.ax.set_title("Grafo", color="white")
+        self.canvas.draw()
+
+    # -----------------
+    # ANIMAÇÃO EMBUTIDA
+    # -----------------
+    def animate_graph(self, path):
+        import numpy as np
+        pos = nx.spring_layout(self.grafo.grafo, seed=42)
+
+        # cores neon estilo shader
+        def neon(color_base, intensity):
+            return (color_base[0] * intensity, color_base[1] * intensity, color_base[2] * intensity)
+
+        red = (1.0, 0.2, 0.2)
+        green = (0.2, 1.0, 0.4)
+        gray = (0.5, 0.5, 0.5)
+
+        for i, current in enumerate(path):
+            for fade in np.linspace(0.2, 1.0, 10):  # animação suave
+                self.ax.clear()
+                colors = []
+                for n in self.grafo.grafo.nodes:
+                    if n == current:
+                        colors.append(neon(red, fade))
+                    elif n in path[:i]:
+                        colors.append(neon(green, fade))
+                    else:
+                        colors.append(neon(gray, 0.6))
+
+                nx.draw(
+                    self.grafo.grafo, pos, ax=self.ax,
+                    node_color=colors, edge_color="#555555",
+                    with_labels=True, node_size=700, font_size=8
+                )
+
+                self.ax.set_title(f"Visitando {current}", color="white")
+                self.canvas.draw()
+                QApplication.processEvents()
+
+    # -----------------
+    # EXECUTAR A*
+    # -----------------
     def run_astar(self):
         if not self.grafo:
-            
             return
 
         origem = self.combo_origem.currentText()
@@ -132,14 +213,18 @@ class AStarGUI(QWidget):
 
         path = self.astar.search(origem, destino)
         if not path:
-            
+            self.label_caminho.setText("Nenhum caminho encontrado.")
             return
 
-        self.grafo.animate_path(path)
+        caminho_formatado = " → ".join(path)
+        self.label_caminho.setText(f"Caminho: {caminho_formatado}")
 
-        
+        self.animate_graph(path)
 
 
+# =========================
+# MAIN
+# =========================
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     gui = AStarGUI()
