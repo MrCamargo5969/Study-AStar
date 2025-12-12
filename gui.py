@@ -56,6 +56,10 @@ class AStarGUI(QWidget):
         btn_criar = self.button("Criar Grafo", self.criar_grafo)
         left.addWidget(btn_criar)
 
+        btn_novos_pesos = self.button("Gerar Novos Pesos", self.gerar_novos_pesos)
+        left.addWidget(btn_novos_pesos)
+
+
         row2 = QHBoxLayout()
         left.addLayout(row2)
 
@@ -131,7 +135,7 @@ class AStarGUI(QWidget):
     def draw_graph(self):
         if not self.grafo:
             return
-
+        
         self.ax.clear()
         pos = nx.spring_layout(self.grafo.grafo, seed=42, k=4.0)
 
@@ -192,11 +196,30 @@ class AStarGUI(QWidget):
             self.label_caminho.setText("Nenhum caminho encontrado.")
             return
 
-        caminho_formatado = " → ".join(path)
-        self.label_caminho.setText(f"Caminho: {caminho_formatado}")
+        formatado = []
+        for i, v in enumerate(path):
+            peso = self.grafo.grafo.nodes[v]['weight']
+            if i == 0:
+                formatado.append(f"🟢[{v} P{peso}]")
+            elif i == len(path)-1:
+                formatado.append(f"[{v} P{peso}]🔴")
+            else:
+                formatado.append(f"[{v} P{peso}]")
 
+        self.label_caminho.setText(" → ".join(formatado))
         self.animate_graph(path)
+    
+    def gerar_novos_pesos(self):
+        if not self.grafo:
+            return
 
+        import random
+
+        for n in self.grafo.grafo.nodes:
+            self.grafo.grafo.nodes[n]['weight'] = random.randint(1, 20)
+
+        self.draw_graph()
+        self.label_caminho.setText("Pesos atualizados.")
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     gui = AStarGUI()
